@@ -78,8 +78,15 @@ def iter_drive_files(
     """
     max_depth = _effective_max_depth(traversal)
     names = folder_names if folder_names is not None else {}
+    visited_folders: set[str] = set()
 
     def walk(folder_id: str, depth: int, parent_name: str | None) -> Iterator[dict[str, Any]]:
+        # Prevent infinite loops / multiple traversal paths
+        if folder_id in visited_folders:
+            logger.debug("Skipping already visited folder %s to avoid cycles", folder_id)
+            return
+        visited_folders.add(folder_id)
+
         if depth > 0 and max_depth >= 0 and depth > max_depth:
             return
 
