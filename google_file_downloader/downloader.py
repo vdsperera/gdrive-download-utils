@@ -212,12 +212,15 @@ class GoogleDriveFolderDownloader:
         batch_size: int,
     ) -> str:
         if download.custom_filename:
+            custom_path = Path(download.custom_filename)
+            custom_stem = custom_path.stem or "download"
+            
+            original_path = Path(original_name)
+            original_suffix = original_path.suffix
+            
             if batch_size > 1:
-                path = Path(download.custom_filename)
-                stem = path.stem or "download"
-                suffix = path.suffix
-                return f"{stem}_{index + 1}{suffix}"
-            return download.custom_filename
+                return f"{custom_stem}_{index + 1}{original_suffix}"
+            return f"{custom_stem}{original_suffix}"
         return original_name
 
     def _write_file_to_disk(self, file_id: str, target_path: Path) -> None:
