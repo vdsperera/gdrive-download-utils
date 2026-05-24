@@ -1,4 +1,6 @@
+from platform import system
 import os
+import sys
 from pathlib import Path
 
 from google.auth.transport.requests import Request
@@ -30,15 +32,32 @@ def authenticate():
 
 
 def download_packets():
-    drive = authenticate()
-    pa_downloader = PacketDownloader(
-        drive=drive,
-        search_folder_id="15ef9UDdGImP6l5ZCDD7TdU6I6ycte-Xp",
-        destination_dir="./downloads",
-        custom_save_filename_pattern="req_{id}_doc",
-    )
+    try:
+        drive = authenticate()
+    except Exception as e:
+        print(f"Auethentication failed: {e}")
+        sys.exit(1)
 
-    pa_downloader.download_packet(id="208988")
+    try:
+        pa_downloader = PacketDownloader(
+            drive=drive,
+            search_folder_id="15ef9UDdGImP6l5ZCDD7TdU6I6ycte-Xp",
+            destination_dir="./downloads",
+            custom_save_filename_pattern="req_{id}_doc",
+        )
+    except Exception as e:
+        print(f"Configuration error: {e}")
+        sys.exit(1)
+
+    try:
+        result = pa_downloader.download_packet(id="208988")
+        for meta in result.downloaded:
+            print(f"Downloaded: {meta.original_filename} -> {meta.local_path}")
+        for path in result.skipped_duplicates:
+            print(f"Skipped duplicate: {path}")
+    except Exception as e:
+        print(f"Download failed: {e}")
+        sys.exit(1)
 
 
 if __name__ == "__main__":
