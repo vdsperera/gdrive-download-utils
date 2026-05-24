@@ -5,6 +5,8 @@ from __future__ import annotations
 import io
 import logging
 from pathlib import Path
+import tempfile
+import shutil
 
 from googleapiclient.http import MediaIoBaseDownload
 
@@ -226,15 +228,31 @@ class GoogleDriveFolderDownloader:
     def _write_file_to_disk(self, file_id: str, target_path: Path) -> None:
         try:
             request = self._service.files().get_media(fileId=file_id)
-            buffer = io.BytesIO()
-            downloader = MediaIoBaseDownload(buffer, request)
-            done = False
-            while not done:
-                _, done = downloader.next_chunk()
-
             target_path.parent.mkdir(parents=True, exist_ok=True)
-            target_path.write_bytes(buffer.getvalue())
+            # buffer = io.BytesIO()
+            # downloader = MediaIoBaseDownload(buffer, request)
+            # done = False
+            # while not done:
+            #     _, done = downloader.next_chunk()
+
+            
+            # target_path.write_bytes(buffer.getvalue())
+
+            with tempfile.NamedTemporaryFile(
+                delete=False,
+                dir=target_path.parent,  # same dir = atomic move guaranteed
+                suffix=".tmp"
+            ) as tmp:
+                tmp_path = Path(tmp.name)
+                downloader = MediaIoBaseDownload(tmp, request)
+                done = False
+                while not done:
+                    _, done = downloader.next_chunk()
+
+            tmp_path.rename(target_path)  # atomic on same filesystem
         except Exception as exc:
+            if tmp_path and tmp_path.exists():
+                tmp_path.unlink()  # clean up partial file
             raise DownloadError(
                 f"Failed to download file {file_id}",
                 file_id=file_id,
