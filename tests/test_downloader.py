@@ -118,6 +118,32 @@ def test_download_all_with_custom_filename(drive_service: MagicMock, tmp_path: P
     assert names == {"bundle_1.pdf", "bundle_2.pdf"}
 
 
+def test_download_custom_filename_retains_original_extension(drive_service: MagicMock, tmp_path: Path):
+    downloader = GoogleDriveFolderDownloader(drive_service)
+    files = [_file("1", "doc_a.xlsx")]
+
+    with patch(
+        "google_file_downloader.downloader.iter_drive_files",
+        return_value=iter(files),
+    ), patch(
+        "google_file_downloader.downloader.MediaIoBaseDownload",
+        FakeMediaDownload,
+    ):
+        result = downloader.download_matching_files(
+            "root",
+            SearchOptions(search_term="doc", match_mode=SearchMatchMode.PARTIAL),
+            download=DownloadOptions(
+                destination_dir=tmp_path,
+                custom_filename="my_custom_name.pdf",
+            ),
+            download_mode=DownloadMode.FIRST,
+        )
+
+    assert result.success_count == 1
+    meta = result.downloaded[0]
+    assert meta.downloaded_filename == "my_custom_name.xlsx"
+
+
 def test_skip_duplicate_records_skipped(drive_service: MagicMock, tmp_path: Path):
     (tmp_path / "Report.pdf").write_bytes(b"existing")
     downloader = GoogleDriveFolderDownloader(drive_service)
