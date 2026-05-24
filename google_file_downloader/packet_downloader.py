@@ -12,9 +12,10 @@ from google_file_downloader import (
 )
 
 class PacketDownloader:
-    def __init__(self, drive, folder_id, destination_dir, custom_save_filename_pattern):
+    def __init__(self, drive, search_folder_id, destination_dir, custom_save_filename_pattern):
         self.downloader = GoogleDriveFolderDownloader(drive)
-        self.folder_id = folder_id
+        self.folder_id = search_folder_id
+        self.target_file_name_pattern = "pa_{id}"
         self.file_type = FileTypeFilter(extensions=frozenset({"pdf"}))
         self.traversal_options = TraversalOptions(recursive=True, max_depth=-1)
         # self.download_options = DownloadOptions(
@@ -30,7 +31,7 @@ class PacketDownloader:
         self.match_mode = SearchMatchMode.EXACT
 
     def download_packet(self, id):
-        search_term = f"pa_{id}"
+        search_term = self.target_file_name_pattern.format(id=id)
 
         search_options = SearchOptions(
             search_term=search_term,
