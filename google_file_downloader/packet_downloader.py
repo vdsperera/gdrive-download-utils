@@ -11,8 +11,21 @@ from google_file_downloader import (
     TraversalOptions,
 )
 
+from google_file_downloader.exceptions import ConfigurationError
+
 class PacketDownloader:
-    def __init__(self, drive, search_folder_id, destination_dir, custom_save_filename_pattern):
+    def __init__(self, drive, search_folder_id: str,
+                destination_dir: str, custom_save_filename_pattern: str):
+
+        if not drive:
+            raise ValueError("drive service client must not be None")
+        if not search_folder_id or not search_folder_id.strip():
+            raise ConfigurationError("search_folder_id must be a non-empty string")
+        if not destination_dir or not destination_dir.strip():
+            raise ConfigurationError("destination_dir must be a non-empty string")
+        if not custom_save_filename_pattern or not custom_save_filename_pattern.strip():
+            raise ConfigurationError("custom_save_filename_pattern must be a non-empty string")
+
         self.downloader = GoogleDriveFolderDownloader(drive)
         self.folder_id = search_folder_id
         self.target_file_name_pattern = "pa_{id}"
@@ -31,7 +44,10 @@ class PacketDownloader:
         self.match_mode = SearchMatchMode.EXACT
 
     def download_packet(self, id):
-        search_term = self.target_file_name_pattern.format(id=id)
+        normalized_id = str(id).strip()
+        if not normalized_id:
+            raise ValueError("packet id must not be blank")
+        search_term = self.target_file_name_pattern.format(id=normalized_id)
 
         search_options = SearchOptions(
             search_term=search_term,
@@ -54,6 +70,11 @@ class PacketDownloader:
             download_mode=self.download_mode,
         )
 
+        # Raise exception or handle error reporting
+        if result.errors:
+            error_msg = f"Errors occurred while downloading packet {id}: " + "; ".join(result.errors)
+            raise RuntimeError(error_msg)
         for meta in result.downloaded:
-            print(meta.original_filename, meta.local_path, meta.drive_file_id)
+            print(f"Downloaded: {meta.original_filename} to {meta.local_path} (ID: {meta.drive_file_id})")
     
+        return result
