@@ -11,7 +11,7 @@ from google_file_downloader import (
     TraversalOptions,
 )
 
-from google_file_downloader.exceptions import ConfigurationError
+from google_file_downloader.exceptions import ConfigurationError, DownloadError
 
 class PacketDownloader:
     def __init__(self, drive, search_folder_id: str,
@@ -72,9 +72,8 @@ class PacketDownloader:
 
         # Raise exception or handle error reporting
         if result.errors:
-            error_msg = f"Errors occurred while downloading packet {id}: " + "; ".join(result.errors)
-            raise RuntimeError(error_msg)
-        for meta in result.downloaded:
-            print(f"Downloaded: {meta.original_filename} to {meta.local_path} (ID: {meta.drive_file_id})")
+            error_msg = (f"Errors occurred while downloading packet {id}: " +
+                         "; ".join(result.errors))
+            raise DownloadError(error_msg)
     
         return result
