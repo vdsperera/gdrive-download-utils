@@ -7,6 +7,7 @@ import logging
 from pathlib import Path
 import tempfile
 import shutil
+import time
 
 from googleapiclient.http import MediaIoBaseDownload
 
@@ -225,36 +226,60 @@ class GoogleDriveFolderDownloader:
             return f"{custom_stem}{original_suffix}"
         return original_name
 
-    def _write_file_to_disk(self, file_id: str, target_path: Path) -> None:
-        try:
-            request = self._service.files().get_media(fileId=file_id)
-            target_path.parent.mkdir(parents=True, exist_ok=True)
-            # buffer = io.BytesIO()
-            # downloader = MediaIoBaseDownload(buffer, request)
-            # done = False
-            # while not done:
-            #     _, done = downloader.next_chunk()
+    def _write_file_to_disk(self, file_id: str, target_path: Path,
+                            retries: int = 3, backoff_base: float = 2.0,) -> None:
+        """
+        Download ``file_id`` to ``target_path`` via a temp file, with retries.
 
-            
-            # target_path.write_bytes(buffer.getvalue())
+        Each attempt streams directly to disk (no in-memory buffer).
+        On failure the temp file is cleaned up before the next attempt.
+        After all attempts are exhausted, raises ``DownloadError``.
 
-            with tempfile.NamedTemporaryFile(
-                delete=False,
-                dir=target_path.parent,  # same dir = atomic move guaranteed
-                suffix=".tmp"
-            ) as tmp:
-                tmp_path = Path(tmp.name)
-                downloader = MediaIoBaseDownload(tmp, request)
-                done = False
-                while not done:
-                    _, done = downloader.next_chunk()
+        Args:
+            retries: Total number of attempts (1 = no retry).
+            backoff_base: Seconds for first sleep; doubles each attempt (2, 4, 8 …).
+        """
 
-            tmp_path.rename(target_path)  # atomic on same filesystem
-        except Exception as exc:
-            if tmp_path and tmp_path.exists():
-                tmp_path.unlink()  # clean up partial file
-            raise DownloadError(
-                f"Failed to download file {file_id}",
-                file_id=file_id,
-                cause=exc,
-            ) from exc
+        target_path.parent.mkdir(parents=True, exist_ok=True)
+        last_exc: Exception | None = None
+
+        for attempt in range(1, retries + 1):
+            tmp_path: Path | None = None
+            try:
+                request = self._service.files().get_media(fileId=file_id)
+                with tempfile.NamedTemporaryFile(
+                    delete=False,
+                    dir=target_path.parent,  # same dir = atomic move guaranteed
+                    suffix=".tmp"
+                ) as tmp:
+                    tmp_path = Path(tmp.name)
+                    downloader = MediaIoBaseDownload(tmp, request)
+                    done = False
+                    while not done:
+                        _, done = downloader.next_chunk()
+
+                tmp_path.rename(target_path)  # atomic on same filesystem
+                return
+            except Exception as exc:
+                last_exc = exc
+                if tmp_path is not None and tmp_path.exists():
+                    tmp_path.unlink()
+
+                if attempt < retries:
+                    sleep_secs = backoff_base ** attempt  # 2s, 4s, 8s …
+                    logger.warning(
+                        "Attempt %d/%d failed for file %s (%s) — retrying in %.0fs",
+                        attempt, retries, file_id, exc, sleep_secs,
+                    )
+                    time.sleep(sleep_secs)
+                else:
+                    logger.error(
+                        "All %d attempts failed for file %s", retries, file_id
+                    )
+
+        raise DownloadError(
+            f"Failed to download file {file_id}",
+            file_id=file_id,
+            cause=last_exc,
+        ) from last_exc
+
