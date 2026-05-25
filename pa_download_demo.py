@@ -10,7 +10,7 @@ from googleapiclient.discovery import build
 
 from google_file_downloader import PacketDownloader
 from google_file_downloader.exceptions import (
-    DownloadError, FileNotFoundError, ConfigurationError)
+    DownloadError, ConfigurationError)
 
 SCOPES = ["https://www.googleapis.com/auth/drive"]
 CREDENTIALS_FILE = "credentials.json"
