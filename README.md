@@ -92,21 +92,21 @@ for f in matches:
 
 ---
 
-### `PacketDownloader` — domain-specific wrapper
+### `TemplatedFileDownloader` — templated/pattern-based wrapper
 
-A higher-level class built on top of `GoogleDriveFolderDownloader`, tailored for downloading `pa_{id}.pdf` files by packet ID.
+A higher-level class built on top of `GoogleDriveFolderDownloader`, tailored for downloading files matching a target pattern (e.g., `pa_{id}.pdf`) by ID.
 
 ```python
-from google_file_downloader import PacketDownloader
+from google_file_downloader import TemplatedFileDownloader
 
-pa_downloader = PacketDownloader(
+downloader = TemplatedFileDownloader(
     drive=drive,
     search_folder_id="your_folder_id_here",
     destination_dir="./downloads",
     custom_save_filename_pattern="req_{id}_doc",
 )
 
-result = pa_downloader.download_packet(id="208988")
+result = downloader.download_packet(id="208988")
 ```
 
 This searches recursively for a file named exactly `pa_208988.pdf`, downloads all matches, and saves them as `req_208988_doc.pdf`. Raises `FileNotFoundError` if no matching file is found, or `DownloadError` if the download fails.
@@ -166,7 +166,7 @@ from google_file_downloader.exceptions import (
 )
 
 try:
-    result = pa_downloader.download_packet(id="208988")
+    result = downloader.download_packet(id="208988")
 except FileNotFoundError as e:
     print(f"Packet not found: {e}")
 except DownloadError as e:
@@ -193,7 +193,7 @@ pytest
 ```
 google_file_downloader/
 ├── downloader.py        # GoogleDriveFolderDownloader — core download logic
-├── packet_downloader.py # PacketDownloader — domain-specific wrapper
+├── templated_downloader.py # TemplatedFileDownloader — templated/pattern-based wrapper
 ├── traversal.py         # Recursive Drive folder traversal
 ├── matcher.py           # Filename search and matching
 ├── file_type.py         # Extension and MIME type filtering

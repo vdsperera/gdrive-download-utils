@@ -19,7 +19,7 @@ from google_file_downloader.models import (
     TraversalOptions,
 )
 
-from google_file_downloader.packet_downloader import PacketDownloader
+from google_file_downloader.templated_downloader import TemplatedFileDownloader
 
 __all__ = [
     "ConfigurationError",
@@ -36,5 +36,5 @@ __all__ = [
     "SearchMatchMode",
     "SearchOptions",
     "TraversalOptions",
-    "PacketDownloader",
+    "TemplatedFileDownloader",
 ]

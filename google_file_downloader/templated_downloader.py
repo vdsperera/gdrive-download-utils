@@ -15,7 +15,7 @@ from google_file_downloader.models import DownloadResult
 
 from google_file_downloader.exceptions import ConfigurationError, DownloadError
 
-class PacketDownloader:
+class TemplatedFileDownloader:
     def __init__(self, drive, search_folder_id: str,
                 destination_dir: str, custom_save_filename_pattern: str):
 

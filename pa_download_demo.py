@@ -8,7 +8,7 @@ from google.oauth2.credentials import Credentials
 from google_auth_oauthlib.flow import InstalledAppFlow
 from googleapiclient.discovery import build
 
-from google_file_downloader import PacketDownloader
+from google_file_downloader import TemplatedFileDownloader
 from google_file_downloader.exceptions import (
     DownloadError, ConfigurationError)
 
@@ -41,7 +41,7 @@ def download_packets():
         sys.exit(1)
 
     try:
-        pa_downloader = PacketDownloader(
+        templated_downloader = TemplatedFileDownloader(
             drive=drive,
             search_folder_id="15ef9UDdGImP6l5ZCDD7TdU6I6ycte-Xp",
             destination_dir="./downloads",
@@ -52,7 +52,7 @@ def download_packets():
         sys.exit(1)
 
     try:
-        result = pa_downloader.download_packet(id="208988")
+        result = templated_downloader.download_packet(id="208988")
         for meta in result.downloaded:
             print(f"Downloaded: {meta.original_filename} -> {meta.local_path}")
         for path in result.skipped_duplicates:
