@@ -11,6 +11,8 @@ from google_file_downloader import (
     TraversalOptions,
 )
 
+from google_file_downloader.models import DownloadResult
+
 from google_file_downloader.exceptions import ConfigurationError, DownloadError
 
 class PacketDownloader:
@@ -39,7 +41,7 @@ class PacketDownloader:
         self.case_sensitive = False
         self.match_mode = SearchMatchMode.EXACT
 
-    def download_packet(self, id):
+    def download_packet(self, id) -> DownloadResult:
         normalized_id = str(id).strip()
         if not normalized_id:
             raise ValueError("packet id must not be blank")
