@@ -70,6 +70,11 @@ class PacketDownloader:
             download_mode=self.download_mode,
         )
 
+        if not result.downloaded and not result.skipped_duplicates:
+            raise FileNotFoundError(
+                f"No file found for packet {id} in folder {self.folder_id}"
+            )
+
         # Raise exception or handle error reporting
         if result.errors:
             error_msg = (f"Errors occurred while downloading packet {id}: " +
