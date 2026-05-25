@@ -22,7 +22,8 @@ def _list_children(
     mime_query: str | None = None,
 ) -> list[dict[str, Any]]:
     """List non-trashed children of a folder."""
-    query_parts = [f"'{folder_id}' in parents", "trashed = false"]
+    escaped_folder_id = folder_id.replace("'", "\\'")
+    query_parts = [f"'{escaped_folder_id}' in parents", "trashed = false"]
     if mime_query:
         query_parts.append(mime_query)
     query = " and ".join(query_parts)
