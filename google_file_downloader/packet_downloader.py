@@ -31,11 +31,7 @@ class PacketDownloader:
         self.target_file_name_pattern = "pa_{id}"
         self.file_type = FileTypeFilter(extensions=frozenset({"pdf"}))
         self.traversal_options = TraversalOptions(recursive=True, max_depth=-1)
-        # self.download_options = DownloadOptions(
-        #     destination_dir = Path(destination_dir),
-        #     custom_filename=None,
-        #     duplicate_strategy = DuplicateFilenameStrategy.SKIP,
-        # )
+
         self.destination_dir = Path(destination_dir)
         self.custom_save_filename_pattern = custom_save_filename_pattern
         self.duplicate_strategy = DuplicateFilenameStrategy.SKIP
