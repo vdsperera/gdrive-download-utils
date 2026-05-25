@@ -226,7 +226,7 @@ class GoogleDriveFolderDownloader:
             return f"{custom_stem}{original_suffix}"
         return original_name
 
-    def _write_file_to_disk(self, file_id: str, target_path: Path,
+    def _write_file_to_disk(self, file_id: str, target_path: Path, *,
                             retries: int = 3, backoff_base: float = 2.0,) -> None:
         """
         Download ``file_id`` to ``target_path`` via a temp file, with retries.
