@@ -9,6 +9,8 @@ from google_auth_oauthlib.flow import InstalledAppFlow
 from googleapiclient.discovery import build
 
 from google_file_downloader import PacketDownloader
+from google_file_downloader.exceptions import (
+    DownloadError, FileNotFoundError, ConfigurationError)
 
 SCOPES = ["https://www.googleapis.com/auth/drive"]
 CREDENTIALS_FILE = "credentials.json"
@@ -45,7 +47,7 @@ def download_packets():
             destination_dir="./downloads",
             custom_save_filename_pattern="req_{id}_doc",
         )
-    except Exception as e:
+    except ConfigurationError as e:
         print(f"Configuration error: {e}")
         sys.exit(1)
 
@@ -55,7 +57,10 @@ def download_packets():
             print(f"Downloaded: {meta.original_filename} -> {meta.local_path}")
         for path in result.skipped_duplicates:
             print(f"Skipped duplicate: {path}")
-    except Exception as e:
+    except FileNotFoundError as e:
+        print(f"Packet not found: {e}")
+        sys.exit(1)
+    except DownloadError as e:
         print(f"Download failed: {e}")
         sys.exit(1)
 
