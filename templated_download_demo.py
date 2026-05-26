@@ -36,8 +36,12 @@ def authenticate():
 def download_packets():
     try:
         drive = authenticate()
+    except FileNotFoundError:
+        print(f"Credentials file not found: {CREDENTIALS_FILE}")
+        print("Download it from Google Cloud Console and place it in this directory.")
+        sys.exit(1)
     except Exception as e:
-        print(f"Auethentication failed: {e}")
+        print(f"Authentication failed: {e}")
         sys.exit(1)
 
     try:
