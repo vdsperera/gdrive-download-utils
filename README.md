@@ -2,16 +2,23 @@
 
 A reusable Python utility for downloading files from authenticated Google Drive folders. Supports recursive folder traversal, filename search, file type filtering, duplicate handling, and automatic retries.
 
+Includes `GoogleDriveFolderDownloader` for general-purpose use and `TemplatedFileDownloader` for pattern-based downloads.
+
 ## Installation
 
+**For local development**
 ```bash
-pip install -e .
+poetry install
 ```
 
-**Dependencies**
-
+**For use in another project**
 ```bash
-pip install -r requirements.txt
+poetry add git+https://github.com/vdsperera/gdrive-download-utils.git
+```
+
+**Pin to a specific version (recommended for production)**
+```bash
+poetry add git+https://github.com/vdsperera/gdrive-download-utils.git@v1.0.0
 ```
 
 Requires Python 3.10+.
@@ -20,13 +27,34 @@ Requires Python 3.10+.
 
 ## Google Drive Authentication
 
-This library requires OAuth 2.0 credentials. Set up via [Google Cloud Console](https://console.cloud.google.com/):
+### Desktop / development (OAuth 2.0)
+
+Set up via [Google Cloud Console](https://console.cloud.google.com/):
 
 1. Create a project and enable the **Google Drive API**
 2. Create OAuth 2.0 credentials (Desktop app) and download `credentials.json`
 3. On first run, a browser window opens for authorization — a `token.json` is saved for subsequent runs
 
-The `pa_download_demo.py` file shows a complete working auth flow.
+The `templated_download_demo.py` file shows a complete working auth flow.
+
+### Automation / CI (Service Account — recommended)
+
+For automation frameworks where no browser is available:
+
+1. Create a service account in Google Cloud Console
+2. Download the `service_account.json` key file
+3. Share the target Drive folder with the service account email
+
+```python
+from google.oauth2 import service_account
+from googleapiclient.discovery import build
+
+credentials = service_account.Credentials.from_service_account_file(
+    "service_account.json",
+    scopes=["https://www.googleapis.com/auth/drive.readonly"],
+)
+drive = build("drive", "v3", credentials=credentials)
+```
 
 ---
 
@@ -92,9 +120,9 @@ for f in matches:
 
 ---
 
-### `TemplatedFileDownloader` — templated/pattern-based wrapper
+### `TemplatedFileDownloader` — pattern-based wrapper
 
-A higher-level class built on top of `GoogleDriveFolderDownloader`, tailored for downloading files matching a target pattern (e.g., `pa_{id}.pdf`) by ID.
+A higher-level class for downloading files that follow a naming pattern. Searches recursively by default, handles retries, and raises clearly on failure.
 
 ```python
 from google_file_downloader import TemplatedFileDownloader
@@ -109,7 +137,33 @@ downloader = TemplatedFileDownloader(
 result = downloader.download_packet(id="208988")
 ```
 
-This searches recursively for a file named exactly `pa_208988.pdf`, downloads all matches, and saves them as `req_208988_doc.pdf`. Raises `FileNotFoundError` if no matching file is found, or `DownloadError` if the download fails.
+Default settings:
+
+| Setting | Value |
+|---|---|
+| File name pattern | `pa_{id}` |
+| File type | PDF only |
+| Traversal | Recursive, unlimited depth |
+| Duplicate strategy | Skip |
+| Download mode | All matches |
+| Match mode | Exact |
+
+Raises `FileNotFoundError` if no matching file is found, or `DownloadError` if the download fails.
+
+#### Extending with a custom downloader
+
+To create your own variant with different settings, subclass `TemplatedFileDownloader` and override only what changes:
+
+```python
+from google_file_downloader.templated_downloader import TemplatedFileDownloader
+from google_file_downloader.models import FileTypeFilter
+
+class InvoiceDownloader(TemplatedFileDownloader):
+    def __init__(self, drive, search_folder_id, destination_dir, custom_save_filename_pattern):
+        super().__init__(drive, search_folder_id, destination_dir, custom_save_filename_pattern)
+        self.target_file_name_pattern = "inv_{id}"
+        self.file_type = FileTypeFilter(extensions=frozenset({"xlsx"}))
+```
 
 ---
 
@@ -182,8 +236,8 @@ Download failures are retried automatically (3 attempts, exponential backoff: 2s
 ## Running Tests
 
 ```bash
-pip install -e ".[dev]"
-pytest
+poetry install
+poetry run pytest
 ```
 
 ---
@@ -192,13 +246,13 @@ pytest
 
 ```
 google_file_downloader/
-├── downloader.py        # GoogleDriveFolderDownloader — core download logic
-├── templated_downloader.py # TemplatedFileDownloader — templated/pattern-based wrapper
-├── traversal.py         # Recursive Drive folder traversal
-├── matcher.py           # Filename search and matching
-├── file_type.py         # Extension and MIME type filtering
-├── path_utils.py        # Local filesystem helpers
-├── models.py            # Config dataclasses and result types
-├── exceptions.py        # Custom exception hierarchy
-└── mime.py              # MIME type mappings
+├── downloader.py            # GoogleDriveFolderDownloader — core download logic
+├── templated_downloader.py  # TemplatedFileDownloader — pattern-based wrapper
+├── traversal.py             # Recursive Drive folder traversal
+├── matcher.py               # Filename search and matching
+├── file_type.py             # Extension and MIME type filtering
+├── path_utils.py            # Local filesystem helpers
+├── models.py                # Config dataclasses and result types
+├── exceptions.py            # Custom exception hierarchy
+└── mime.py                  # MIME type mappings
 ```
