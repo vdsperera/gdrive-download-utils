@@ -7,6 +7,7 @@ name = "google-file-downloader"
 version = "0.1.0"
 description = "Reusable utility for downloading files from authenticated Google Drive folders"
 packages = [{include = "google_file_downloader"}]
+license = "MIT"
 
 [tool.poetry.dependencies]
 python = "^3.10"
