@@ -26,7 +26,7 @@ from google_file_downloader.models import (
     TraversalOptions,
 )
 from google_file_downloader.path_utils import resolve_target_path
-from google_file_downloader.traversal import iter_drive_files
+from google_file_downloader.traversal import iter_drive_files, iter_drive_files_strategy_a
 
 logger = logging.getLogger(__name__)
 
@@ -76,8 +76,9 @@ class GoogleDriveFolderDownloader:
         """
         traversal = traversal or TraversalOptions()
         matches: list[dict] = []
+        print(f"DEBUG: find_matching_files called with search_term={search.search_term}")
 
-        for file_meta in iter_drive_files(self._service, folder_id, traversal):
+        for file_meta in iter_drive_files_strategy_a(self._service, folder_id, search, traversal):
             name = file_meta.get("name", "")
             mime = file_meta.get("mimeType")
 
@@ -143,6 +144,7 @@ class GoogleDriveFolderDownloader:
 
         for index, file_meta in enumerate(targets):
             try:
+                print(f"DEBUG: Calling _download_single for file_id={file_meta.get('id')}")
                 metadata, skipped_path = self._download_single(
                     file_meta, download, index, len(targets)
                 )
@@ -179,6 +181,7 @@ class GoogleDriveFolderDownloader:
         )
 
         try:
+            print(f"DEBUG: resolve_target_path dest_name={dest_name} strategy={download.duplicate_strategy}")
             target_path, should_download = resolve_target_path(
                 download.destination_dir,
                 dest_name,

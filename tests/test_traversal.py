@@ -2,8 +2,8 @@ import pytest
 from unittest.mock import MagicMock
 
 from google_file_downloader.exceptions import DriveApiError
-from google_file_downloader.models import TraversalOptions
-from google_file_downloader.traversal import iter_drive_files
+from google_file_downloader.models import TraversalOptions, SearchOptions
+from google_file_downloader.traversal import iter_drive_files, iter_drive_files_strategy_a
 
 FOLDER_MIME = "application/vnd.google-apps.folder"
 
@@ -214,3 +214,90 @@ class TestTraversalOptionsValidation:
     def test_max_depth_below_minus_one_invalid(self):
         with pytest.raises(ValueError):
             TraversalOptions(recursive=True, max_depth=-2)
+
+
+class TestStrategyATraversal:
+    def test_strategy_a_finds_nested_file(self):
+        service = MagicMock()
+        # Mock root folder query and parent folder queries
+        service.files().get().execute.side_effect = [
+            {"id": "root", "name": "RootFolder", "parents": []},  # root folder
+            {"id": "sub1", "name": "SubFolder", "parents": ["root"]},  # parent of file
+        ]
+        # Mock global list query returning the file
+        service.files().list().execute.return_value = {
+            "files": [
+                {
+                    "id": "f1",
+                    "name": "pa_208988.pdf",
+                    "mimeType": "application/pdf",
+                    "parents": ["sub1"],
+                }
+            ],
+            "nextPageToken": None,
+        }
+
+        results = list(
+            iter_drive_files_strategy_a(
+                service,
+                "root",
+                SearchOptions(search_term="pa_208988"),
+                TraversalOptions(recursive=True, max_depth=-1),
+            )
+        )
+
+        assert len(results) == 1
+        res = results[0]
+        assert res["id"] == "f1"
+        assert res["name"] == "pa_208988.pdf"
+        assert res["parent_folder_id"] == "sub1"
+        assert res["parent_folder_name"] == "SubFolder"
+
+    def test_strategy_a_respects_max_depth(self):
+        service = MagicMock()
+        # Mock folder parents:
+        # root -> sub1 (depth 1) -> sub2 (depth 2) -> f1
+        service.files().get().execute.side_effect = [
+            {"id": "root", "name": "RootFolder", "parents": []},  # root folder
+            {"id": "sub2", "name": "Sub2", "parents": ["sub1"]},  # parent of f1
+            {"id": "sub1", "name": "Sub1", "parents": ["root"]},  # parent of sub2
+        ]
+        service.files().list().execute.return_value = {
+            "files": [
+                {
+                    "id": "f1",
+                    "name": "pa_208988.pdf",
+                    "mimeType": "application/pdf",
+                    "parents": ["sub2"],
+                }
+            ],
+            "nextPageToken": None,
+        }
+
+        # recursive=True, max_depth=1 (only sub1 allowed, not sub2/f1)
+        results = list(
+            iter_drive_files_strategy_a(
+                service,
+                "root",
+                SearchOptions(search_term="pa_208988"),
+                TraversalOptions(recursive=True, max_depth=1),
+            )
+        )
+        assert len(results) == 0
+
+        # Now test with max_depth=2 (sub2/f1 allowed)
+        # reset mocks
+        service.files().get().execute.side_effect = [
+            {"id": "root", "name": "RootFolder", "parents": []},
+            {"id": "sub2", "name": "Sub2", "parents": ["sub1"]},
+            {"id": "sub1", "name": "Sub1", "parents": ["root"]},
+        ]
+        results2 = list(
+            iter_drive_files_strategy_a(
+                service,
+                "root",
+                SearchOptions(search_term="pa_208988"),
+                TraversalOptions(recursive=True, max_depth=3),
+            )
+        )
+        assert len(results2) == 1

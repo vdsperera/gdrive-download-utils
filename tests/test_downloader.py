@@ -77,7 +77,7 @@ class TestFindMatchingFiles:
         # Existing test kept intact
         downloader = GoogleDriveFolderDownloader(drive_service)
         files = [_file("1", "Annual Report.pdf"), _file("2", "notes.txt")]
-        with patch("google_file_downloader.downloader.iter_drive_files", return_value=iter(files)):
+        with patch("google_file_downloader.downloader.iter_drive_files_strategy_a", return_value=iter(files)):
             matches = downloader.find_matching_files(
                 "root",
                 SearchOptions(search_term="report", match_mode=SearchMatchMode.PARTIAL),
@@ -88,7 +88,7 @@ class TestFindMatchingFiles:
 
     def test_returns_empty_when_no_match(self, drive_service):
         downloader = GoogleDriveFolderDownloader(drive_service)
-        with patch("google_file_downloader.downloader.iter_drive_files", return_value=iter([])):
+        with patch("google_file_downloader.downloader.iter_drive_files_strategy_a", return_value=iter([])):
             result = downloader.find_matching_files("root", SearchOptions(search_term="report"))
         assert result == []
 
@@ -109,7 +109,7 @@ class TestDownloadMatchingFiles:
         # Existing test kept intact
         downloader = GoogleDriveFolderDownloader(drive_service)
         files = [_file("1", "Report A.pdf"), _file("2", "Report B.pdf")]
-        with patch("google_file_downloader.downloader.iter_drive_files", return_value=iter(files)), \
+        with patch("google_file_downloader.downloader.iter_drive_files_strategy_a", return_value=iter(files)), \
              patch("google_file_downloader.downloader.MediaIoBaseDownload", FakeMediaDownload):
             result = downloader.download_matching_files(
                 "root",
@@ -130,7 +130,7 @@ class TestDownloadMatchingFiles:
         # Existing test kept intact
         downloader = GoogleDriveFolderDownloader(drive_service)
         files = [_file("1", "doc_a.pdf"), _file("2", "doc_b.pdf")]
-        with patch("google_file_downloader.downloader.iter_drive_files", return_value=iter(files)), \
+        with patch("google_file_downloader.downloader.iter_drive_files_strategy_a", return_value=iter(files)), \
              patch("google_file_downloader.downloader.MediaIoBaseDownload", FakeMediaDownload):
             result = downloader.download_matching_files(
                 "root",
@@ -144,7 +144,7 @@ class TestDownloadMatchingFiles:
     def test_custom_filename_retains_original_extension(self, drive_service, tmp_path):
         # Existing test kept intact
         downloader = GoogleDriveFolderDownloader(drive_service)
-        with patch("google_file_downloader.downloader.iter_drive_files", return_value=iter([_file("1", "doc_a.xlsx")])), \
+        with patch("google_file_downloader.downloader.iter_drive_files_strategy_a", return_value=iter([_file("1", "doc_a.xlsx")])), \
              patch("google_file_downloader.downloader.MediaIoBaseDownload", FakeMediaDownload):
             result = downloader.download_matching_files(
                 "root",
@@ -158,7 +158,7 @@ class TestDownloadMatchingFiles:
         # Existing test kept intact
         (tmp_path / "Report.pdf").write_bytes(b"existing")
         downloader = GoogleDriveFolderDownloader(drive_service)
-        with patch("google_file_downloader.downloader.iter_drive_files", return_value=iter([_file("1", "Report.pdf")])):
+        with patch("google_file_downloader.downloader.iter_drive_files_strategy_a", return_value=iter([_file("1", "Report.pdf")])):
             result = downloader.download_matching_files(
                 "root",
                 SearchOptions(search_term="Report", match_mode=SearchMatchMode.EXACT),
@@ -169,7 +169,7 @@ class TestDownloadMatchingFiles:
 
     def test_no_matches_returns_empty_result(self, drive_service, tmp_path):
         downloader = GoogleDriveFolderDownloader(drive_service)
-        with patch("google_file_downloader.downloader.iter_drive_files", return_value=iter([])):
+        with patch("google_file_downloader.downloader.iter_drive_files_strategy_a", return_value=iter([])):
             result = downloader.download_matching_files(
                 "root",
                 SearchOptions(search_term="report"),
@@ -213,7 +213,7 @@ class TestDownloadMatchingFiles:
             target_path.parent.mkdir(parents=True, exist_ok=True)
             target_path.write_bytes(b"ok")
 
-        with patch("google_file_downloader.downloader.iter_drive_files", return_value=iter(files)):
+        with patch("google_file_downloader.downloader.iter_drive_files_strategy_a", return_value=iter(files)):
             downloader._write_file_to_disk = failing_first
             result = downloader.download_matching_files(
                 "root",
