@@ -2,7 +2,7 @@
 
 A reusable Python utility for downloading files from authenticated Google Drive folders. Supports recursive folder traversal, filename search, file type filtering, duplicate handling, and automatic retries.
 
-Includes `GoogleDriveFolderDownloader` for general-purpose use and `TemplatedFileDownloader` for pattern-based downloads.
+Includes `GoogleDriveFolderDownloader` for general-purpose use and `TemplatedFileDownloader` for pattern-based downloads. Both support two interchangeable search strategies so you can tune API efficiency for your folder structure.
 
 ## Installation
 
@@ -71,6 +71,7 @@ from google_file_downloader import (
     GoogleDriveFolderDownloader,
     SearchOptions,
     SearchMatchMode,
+    SearchStrategy,
     FileTypeFilter,
     TraversalOptions,
     DownloadOptions,
@@ -95,6 +96,7 @@ result = downloader.download_matching_files(
         duplicate_strategy=DuplicateFilenameStrategy.RENAME,  # SKIP | OVERWRITE | FAIL
     ),
     download_mode=DownloadMode.ALL,   # or FIRST
+    strategy=SearchStrategy.SEARCH_FIRST,  # or TRAVERSAL — see below
 )
 
 print(f"Downloaded: {result.success_count}")
@@ -113,6 +115,7 @@ matches = downloader.find_matching_files(
     folder_id="your_folder_id_here",
     search=SearchOptions(search_term="invoice"),
     file_type=FileTypeFilter(extensions=frozenset({"pdf"})),
+    strategy=SearchStrategy.SEARCH_FIRST,
 )
 for f in matches:
     print(f["name"], f["id"])
@@ -125,13 +128,14 @@ for f in matches:
 A higher-level class for downloading files that follow a naming pattern. Searches recursively by default, handles retries, and raises clearly on failure.
 
 ```python
-from google_file_downloader import TemplatedFileDownloader
+from google_file_downloader import TemplatedFileDownloader, SearchStrategy
 
 downloader = TemplatedFileDownloader(
     drive=drive,
     search_folder_id="your_folder_id_here",
     destination_dir="./downloads",
     custom_save_filename_pattern="req_{id}_doc",
+    search_strategy=SearchStrategy.SEARCH_FIRST,  # optional — this is the default
 )
 
 result = downloader.download_packet(id="208988")
@@ -147,6 +151,7 @@ Default settings:
 | Duplicate strategy | Skip |
 | Download mode | All matches |
 | Match mode | Exact |
+| Search strategy | `SEARCH_FIRST` |
 
 Raises `FileNotFoundError` if no matching file is found, or `DownloadError` if the download fails.
 
@@ -156,14 +161,49 @@ To create your own variant with different settings, subclass `TemplatedFileDownl
 
 ```python
 from google_file_downloader.templated_downloader import TemplatedFileDownloader
-from google_file_downloader.models import FileTypeFilter
+from google_file_downloader.models import FileTypeFilter, SearchStrategy
 
 class InvoiceDownloader(TemplatedFileDownloader):
     def __init__(self, drive, search_folder_id, destination_dir, custom_save_filename_pattern):
         super().__init__(drive, search_folder_id, destination_dir, custom_save_filename_pattern)
         self.target_file_name_pattern = "inv_{id}"
         self.file_type = FileTypeFilter(extensions=frozenset({"xlsx"}))
+        self.search_strategy = SearchStrategy.TRAVERSAL  # override if needed
 ```
+
+---
+
+## Search Strategies
+
+Both `GoogleDriveFolderDownloader` and `TemplatedFileDownloader` support two interchangeable algorithms for locating files inside a Drive folder. Pass a `SearchStrategy` value to switch between them.
+
+```python
+from google_file_downloader import SearchStrategy
+```
+
+### `SearchStrategy.SEARCH_FIRST` *(default)*
+
+Issues a single targeted `files.list` query to the Drive API using the filename as a filter, then walks each result's parent chain to confirm it lives inside the target folder.
+
+**Best when:** the search term is selective and the folder tree is large. Typically requires only a handful of API calls regardless of tree depth.
+
+### `SearchStrategy.TRAVERSAL`
+
+Performs a recursive DFS walk of the folder tree — listing all children of every subfolder — and filters matches locally by filename.
+
+**Best when:** you need to scan the full folder contents regardless of filename (e.g. auditing, bulk downloads), or when Drive's search index might be stale.
+
+### Comparison
+
+| | `SEARCH_FIRST` | `TRAVERSAL` |
+|---|---|---|
+| API calls | Low (proportional to matches) | High (proportional to folder count) |
+| Speed | Fast for selective searches | Slower on large trees |
+| Relies on Drive index | Yes | No |
+| Deterministic order | No | Yes (DFS) |
+| Results | Identical | Identical |
+
+> Both strategies honour the same `TraversalOptions`, `FileTypeFilter`, and `SearchMatchMode` settings and produce the same results.
 
 ---
 
@@ -176,6 +216,13 @@ class InvoiceDownloader(TemplatedFileDownloader):
 | `search_term` | `str` | required | Filename to search for (extension ignored) |
 | `match_mode` | `SearchMatchMode` | `PARTIAL` | `EXACT` or `PARTIAL` substring match |
 | `case_sensitive` | `bool` | `False` | Case-sensitive matching |
+
+### `SearchStrategy`
+
+| Value | Algorithm |
+|---|---|
+| `SEARCH_FIRST` | Drive API query + ancestor verification *(default)* |
+| `TRAVERSAL` | Recursive DFS folder walk, local filtering |
 
 ### `FileTypeFilter`
 
@@ -248,11 +295,11 @@ poetry run pytest
 google_file_downloader/
 ├── downloader.py            # GoogleDriveFolderDownloader — core download logic
 ├── templated_downloader.py  # TemplatedFileDownloader — pattern-based wrapper
-├── traversal.py             # Recursive Drive folder traversal
+├── traversal.py             # DFS traversal + Search-First strategy implementations
 ├── matcher.py               # Filename search and matching
 ├── file_type.py             # Extension and MIME type filtering
 ├── path_utils.py            # Local filesystem helpers
-├── models.py                # Config dataclasses and result types
+├── models.py                # Config dataclasses, enums and result types
 ├── exceptions.py            # Custom exception hierarchy
 └── mime.py                  # MIME type mappings
 ```

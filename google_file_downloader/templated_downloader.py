@@ -10,14 +10,14 @@ from google_file_downloader import (
     SearchOptions,
     TraversalOptions,
 )
-
-from google_file_downloader.models import DownloadResult
+from google_file_downloader.models import DownloadResult, SearchStrategy
 
 from google_file_downloader.exceptions import ConfigurationError, DownloadError
 
 class TemplatedFileDownloader:
     def __init__(self, drive, search_folder_id: str,
-                destination_dir: str, custom_save_filename_pattern: str):
+                destination_dir: str, custom_save_filename_pattern: str,
+                search_strategy: SearchStrategy = SearchStrategy.SEARCH_FIRST):
 
         if not drive:
             raise ValueError("drive service client must not be None")
@@ -40,6 +40,7 @@ class TemplatedFileDownloader:
         self.download_mode = DownloadMode.ALL
         self.case_sensitive = False
         self.match_mode = SearchMatchMode.EXACT
+        self.search_strategy = search_strategy
 
     def download_packet(self, id) -> DownloadResult:
         normalized_id = str(id).strip()
@@ -66,6 +67,7 @@ class TemplatedFileDownloader:
             file_type=self.file_type,
             traversal=self.traversal_options,
             download_mode=self.download_mode,
+            strategy=self.search_strategy,
         )
 
         # Raise exception or handle error reporting

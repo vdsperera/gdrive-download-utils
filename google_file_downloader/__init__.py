@@ -16,6 +16,7 @@ from google_file_downloader.models import (
     FileTypeFilter,
     SearchMatchMode,
     SearchOptions,
+    SearchStrategy,
     TraversalOptions,
 )
 
@@ -35,6 +36,7 @@ __all__ = [
     "GoogleDriveFolderDownloader",
     "SearchMatchMode",
     "SearchOptions",
+    "SearchStrategy",
     "TraversalOptions",
     "TemplatedFileDownloader",
 ]

@@ -23,6 +23,7 @@ from google_file_downloader.models import (
     DuplicateFilenameStrategy,
     FileTypeFilter,
     SearchOptions,
+    SearchStrategy,
     TraversalOptions,
 )
 from google_file_downloader.path_utils import resolve_target_path
@@ -68,17 +69,43 @@ class GoogleDriveFolderDownloader:
         *,
         file_type: FileTypeFilter | None = None,
         traversal: TraversalOptions | None = None,
+        strategy: SearchStrategy = SearchStrategy.SEARCH_FIRST,
     ) -> list[dict]:
         """
         Search for files under ``folder_id`` without downloading.
 
-        Returns raw Drive file metadata dicts enriched with parent folder fields.
+        Args:
+            folder_id: Google Drive folder ID to search within.
+            search: Filename search configuration.
+            file_type: Optional extension/MIME filter.
+            traversal: Folder recursion and depth limits.
+            strategy: Which search algorithm to use.
+
+                * ``SearchStrategy.SEARCH_FIRST`` *(default)* — issues a
+                  targeted Drive API query then verifies ancestry.  Fewest
+                  API calls when the search term is selective.
+                * ``SearchStrategy.TRAVERSAL`` — walks the entire folder
+                  tree via DFS and filters locally.  Useful when you need
+                  to scan everything regardless of filename.
+
+        Returns:
+            Raw Drive file metadata dicts enriched with parent folder fields.
         """
         traversal = traversal or TraversalOptions()
         matches: list[dict] = []
-        print(f"DEBUG: find_matching_files called with search_term={search.search_term}")
+        logger.debug(
+            "find_matching_files: search_term=%r strategy=%s",
+            search.search_term, strategy,
+        )
 
-        for file_meta in iter_drive_files_strategy_a(self._service, folder_id, search, traversal):
+        if strategy == SearchStrategy.SEARCH_FIRST:
+            file_iter = iter_drive_files_strategy_a(
+                self._service, folder_id, search, traversal
+            )
+        else:
+            file_iter = iter_drive_files(self._service, folder_id, traversal)
+
+        for file_meta in file_iter:
             name = file_meta.get("name", "")
             mime = file_meta.get("mimeType")
 
@@ -102,6 +129,7 @@ class GoogleDriveFolderDownloader:
         file_type: FileTypeFilter | None = None,
         traversal: TraversalOptions | None = None,
         download_mode: DownloadMode = DownloadMode.FIRST,
+        strategy: SearchStrategy = SearchStrategy.SEARCH_FIRST,
     ) -> DownloadResult:
         """
         Find and download files matching the search criteria.
@@ -113,6 +141,7 @@ class GoogleDriveFolderDownloader:
             file_type: Optional extension/MIME filter.
             traversal: Folder recursion and depth limits.
             download_mode: Download first match only or all matches.
+            strategy: Which search algorithm to use (see :meth:`find_matching_files`).
 
         Returns:
             ``DownloadResult`` with downloaded metadata, skips, and errors.
@@ -126,6 +155,7 @@ class GoogleDriveFolderDownloader:
                 search,
                 file_type=file_type,
                 traversal=traversal,
+                strategy=strategy,
             )
         except DriveApiError as exc:
             result.errors.append(str(exc))
@@ -144,7 +174,6 @@ class GoogleDriveFolderDownloader:
 
         for index, file_meta in enumerate(targets):
             try:
-                print(f"DEBUG: Calling _download_single for file_id={file_meta.get('id')}")
                 metadata, skipped_path = self._download_single(
                     file_meta, download, index, len(targets)
                 )
@@ -181,7 +210,6 @@ class GoogleDriveFolderDownloader:
         )
 
         try:
-            print(f"DEBUG: resolve_target_path dest_name={dest_name} strategy={download.duplicate_strategy}")
             target_path, should_download = resolve_target_path(
                 download.destination_dir,
                 dest_name,

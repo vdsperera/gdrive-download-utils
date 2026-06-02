@@ -22,6 +22,26 @@ class DownloadMode(str, Enum):
     ALL = "all"
 
 
+class SearchStrategy(str, Enum):
+    """
+    Which algorithm to use when locating files inside a Drive folder.
+
+    TRAVERSAL
+        Recursive DFS walk: lists every folder in the tree page by page
+        and filters locally.  Deterministic but API-call-heavy for large
+        trees or when you only need one specific file.
+
+    SEARCH_FIRST
+        Query-first, verify-up: issues a single Drive ``files.list`` query
+        with the filename as a filter, then walks each result's parent chain
+        to confirm it lives inside the target folder.  Much faster when the
+        search term is selective, but relies on Drive's full-text index.
+    """
+
+    TRAVERSAL = "traversal"
+    SEARCH_FIRST = "search_first"
+
+
 class DuplicateFilenameStrategy(str, Enum):
     """How to handle filename collisions in the destination directory."""
 

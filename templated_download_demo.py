@@ -8,7 +8,7 @@ from google.oauth2.credentials import Credentials
 from google_auth_oauthlib.flow import InstalledAppFlow
 from googleapiclient.discovery import build
 
-from google_file_downloader import TemplatedFileDownloader
+from google_file_downloader import TemplatedFileDownloader, SearchStrategy
 from google_file_downloader.exceptions import (
     DownloadError, ConfigurationError)
 
@@ -44,12 +44,31 @@ def download_packets():
         print(f"Authentication failed: {e}")
         sys.exit(1)
 
+    # -----------------------------------------------------------------------
+    # Pick the search strategy that suits your Drive structure:
+    #
+    #   SearchStrategy.SEARCH_FIRST  (default)
+    #       Issues a single targeted Drive query then verifies each result
+    #       lives inside your folder.  Lowest API-call count; ideal when
+    #       the filename is selective and the folder tree is large.
+    #
+    #   SearchStrategy.TRAVERSAL
+    #       Walks every subfolder in the tree via DFS and filters locally.
+    #       Deterministic and scan-everything; useful when you want to audit
+    #       the full folder or when Drive's search index is stale.
+    #
+    # Both strategies honour the same TraversalOptions / FileTypeFilter /
+    # SearchMatchMode settings, so results are identical.
+    # -----------------------------------------------------------------------
+    strategy = SearchStrategy.SEARCH_FIRST   # swap to TRAVERSAL to compare
+
     try:
         templated_downloader = TemplatedFileDownloader(
             drive=drive,
             search_folder_id="1KekBkDvrZ69Jka1eoturicWKVhIjgldc",
             destination_dir="./downloads",
             custom_save_filename_pattern="req_{id}_doc",
+            search_strategy=strategy,
         )
     except ConfigurationError as e:
         print(f"Configuration error: {e}")
