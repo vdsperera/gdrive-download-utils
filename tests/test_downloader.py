@@ -12,6 +12,7 @@ from google_file_downloader.models import (
     FileTypeFilter,
     SearchMatchMode,
     SearchOptions,
+    SearchStrategy,
     TraversalOptions,
 )
 
@@ -197,6 +198,7 @@ class TestDownloadMatchingFiles:
                 "root",
                 SearchOptions(search_term="report"),
                 download=_default_opts(tmp_path, DuplicateFilenameStrategy.FAIL),
+                strategy=SearchStrategy.TRAVERSAL,
             )
         assert len(result.errors) == 1
         assert result.downloaded == []

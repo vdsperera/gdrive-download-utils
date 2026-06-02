@@ -13,6 +13,7 @@ from google_file_downloader.models import (
     DownloadMode,
     DuplicateFilenameStrategy,
     SearchMatchMode,
+    SearchStrategy,
 )
 
 
@@ -206,3 +207,51 @@ class TestDownloadPacketResult:
         tfd.downloader.download_matching_files = lambda *a, **kw: bad
         with pytest.raises(DownloadError):
             tfd.download_packet("123")
+
+
+# ---------------------------------------------------------------------------
+# search_strategy — default and forwarding
+# ---------------------------------------------------------------------------
+
+class TestSearchStrategy:
+    def test_default_strategy_is_search_first(self, mock_drive, tmp_path):
+        tfd = TemplatedFileDownloader(
+            drive=mock_drive,
+            search_folder_id="folder_abc",
+            destination_dir=str(tmp_path),
+            custom_save_filename_pattern="req_{id}_doc",
+        )
+        assert tfd.search_strategy == SearchStrategy.SEARCH_FIRST
+
+    def test_explicit_traversal_strategy_stored(self, mock_drive, tmp_path):
+        tfd = TemplatedFileDownloader(
+            drive=mock_drive,
+            search_folder_id="folder_abc",
+            destination_dir=str(tmp_path),
+            custom_save_filename_pattern="req_{id}_doc",
+            search_strategy=SearchStrategy.TRAVERSAL,
+        )
+        assert tfd.search_strategy == SearchStrategy.TRAVERSAL
+
+    def test_strategy_forwarded_to_download_matching_files(self, mock_drive, tmp_path):
+        """Ensure the chosen strategy is passed through to the underlying downloader."""
+        tfd = TemplatedFileDownloader(
+            drive=mock_drive,
+            search_folder_id="folder_abc",
+            destination_dir=str(tmp_path),
+            custom_save_filename_pattern="req_{id}_doc",
+            search_strategy=SearchStrategy.TRAVERSAL,
+        )
+        captured = _capture(tfd)
+        assert captured.get("strategy") == SearchStrategy.TRAVERSAL
+
+    def test_search_first_strategy_forwarded(self, mock_drive, tmp_path):
+        tfd = TemplatedFileDownloader(
+            drive=mock_drive,
+            search_folder_id="folder_abc",
+            destination_dir=str(tmp_path),
+            custom_save_filename_pattern="req_{id}_doc",
+            search_strategy=SearchStrategy.SEARCH_FIRST,
+        )
+        captured = _capture(tfd)
+        assert captured.get("strategy") == SearchStrategy.SEARCH_FIRST
