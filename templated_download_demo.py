@@ -47,7 +47,7 @@ def download_packets():
     try:
         templated_downloader = TemplatedFileDownloader(
             drive=drive,
-            search_folder_id="15ef9UDdGImP6l5ZCDD7TdU6I6ycte-Xp",
+            search_folder_id="1KekBkDvrZ69Jka1eoturicWKVhIjgldc",
             destination_dir="./downloads",
             custom_save_filename_pattern="req_{id}_doc",
         )
@@ -56,7 +56,7 @@ def download_packets():
         sys.exit(1)
 
     try:
-        result = templated_downloader.download_packet(id="208988")
+        result = templated_downloader.download_packet(id="177748")
         for meta in result.downloaded:
             print(f"Downloaded: {meta.original_filename} -> {meta.local_path}")
         for path in result.skipped_duplicates:
