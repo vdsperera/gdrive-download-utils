@@ -1,0 +1,8 @@
+downloads/
+token.json
+credentials.json
+*.egg-info
+__pycache__
+.venv
+test_run_oauth.py
+test_run_service_acc.py
